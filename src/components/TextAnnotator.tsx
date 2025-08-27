@@ -22,43 +22,116 @@ const TextAnnotator: React.FC<TextAnnotatorProps> = ({
   const [selectionEnd, setSelectionEnd] = useState(0)
   const textRef = useRef<HTMLDivElement>(null)
 
+  // Debug logging
+  useEffect(() => {
+    console.log('TextAnnotator rendered with:', {
+      text,
+      entities: entities.length,
+      selectedText,
+      selectedEntityType,
+      selectionStart,
+      selectionEnd
+    })
+  }, [text, entities, selectedText, selectedEntityType, selectionStart, selectionEnd])
+
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Don't interfere with text selection - let the browser handle it naturally
+    console.log('=== handleMouseDown called ===')
     setIsSelecting(true)
   }
 
   const handleMouseUp = () => {
-    const selection = window.getSelection()
-    if (selection && selection.toString().trim()) {
-      const selectedText = selection.toString()
-      const range = selection.getRangeAt(0)
+    console.log('=== handleMouseUp called ===')
+    // Use setTimeout to ensure the selection is complete
+    setTimeout(() => {
+      const selection = window.getSelection()
+      console.log('Selection object:', selection)
+      console.log('Selection text:', selection?.toString())
       
-      if (textRef.current && textRef.current.contains(range.commonAncestorContainer)) {
-        // Find the position of the selected text in the original text
-        // This handles cases where there might be multiple occurrences
-        const start = text.indexOf(selectedText)
-        if (start !== -1) {
-          const end = start + selectedText.length
+      if (selection && selection.toString().trim()) {
+        const selectedText = selection.toString()
+        console.log('Selected text:', selectedText)
+        
+        // Get the range and check if it's within our text area
+        try {
+          const range = selection.getRangeAt(0)
+          console.log('Range:', range)
           
-          setSelectedText(selectedText)
-          setSelectionStart(start)
-          setSelectionEnd(end)
-          setIsSelecting(false)
+          if (textRef.current && textRef.current.contains(range.commonAncestorContainer)) {
+            console.log('Selection is within textRef')
+            
+            // Find the position of the selected text in the original text
+            const start = text.indexOf(selectedText)
+            console.log('Start position:', start)
+            
+            if (start !== -1) {
+              const end = start + selectedText.length
+              console.log('End position:', end)
+              
+              setSelectedText(selectedText)
+              setSelectionStart(start)
+              setSelectionEnd(end)
+              setIsSelecting(false)
+              console.log('Selection state updated successfully')
+            } else {
+              console.log('Could not find selected text in original text')
+            }
+          } else {
+            console.log('Selection is NOT within textRef')
+          }
+        } catch (error) {
+          console.log('Error getting range:', error)
+        }
+      } else {
+        console.log('No valid selection found')
+        // Clear selection state if nothing is selected
+        setSelectedText('')
+        setSelectionStart(0)
+        setSelectionEnd(0)
+        setIsSelecting(false)
+      }
+    }, 10)
+  }
+
+  // Add selection change event listener
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      console.log('=== Selection change event fired ===')
+      const selection = window.getSelection()
+      if (selection && selection.toString().trim()) {
+        const selectedText = selection.toString()
+        console.log('Selection change - selected text:', selectedText)
+        
+        if (textRef.current && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0)
+          if (textRef.current.contains(range.commonAncestorContainer)) {
+            const start = text.indexOf(selectedText)
+            if (start !== -1) {
+              const end = start + selectedText.length
+              setSelectedText(selectedText)
+              setSelectionStart(start)
+              setSelectionEnd(end)
+              setIsSelecting(false)
+              console.log('Selection updated via selection change event')
+            }
+          }
         }
       }
     }
-  }
+
+    document.addEventListener('selectionchange', handleSelectionChange)
+    return () => document.removeEventListener('selectionchange', handleSelectionChange)
+  }, [text])
 
   const handleAddEntity = () => {
-    console.log('handleAddEntity called with:', {
-      selectedText,
-      selectedEntityType,
-      selectionStart,
-      selectionEnd,
-      hasText: !!selectedText,
-      hasType: !!selectedEntityType,
-      startNotEqualEnd: selectionStart !== selectionEnd
-    })
+    console.log('=== handleAddEntity called ===')
+    console.log('selectedText:', selectedText)
+    console.log('selectedEntityType:', selectedEntityType)
+    console.log('selectionStart:', selectionStart)
+    console.log('selectionEnd:', selectionEnd)
+    console.log('hasText:', !!selectedText)
+    console.log('hasType:', !!selectedEntityType)
+    console.log('startNotEqualEnd:', selectionStart !== selectionEnd)
+    console.log('entities:', entities)
     
     if (selectedText && selectedEntityType && selectionStart !== selectionEnd) {
       console.log('Creating new entity...')
@@ -151,6 +224,12 @@ const TextAnnotator: React.FC<TextAnnotatorProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Debug info */}
+      <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
+        Debug: selectedText="{selectedText}", selectedEntityType="{selectedEntityType}", 
+        selectionStart={selectionStart}, selectionEnd={selectionEnd}
+      </div>
+      
       {/* Entity Type Selector */}
       <div className="flex items-center space-x-3">
         <label className="text-sm font-medium text-gray-700">Entity Type:</label>
@@ -182,7 +261,6 @@ const TextAnnotator: React.FC<TextAnnotatorProps> = ({
           }`}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
-          onSelect={handleMouseUp}
           style={{ userSelect: 'text' }}
         >
           {renderAnnotatedText()}

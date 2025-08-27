@@ -4,6 +4,7 @@ import Header from './components/Header'
 import Home from './pages/Home'
 import Annotator from './pages/Annotator'
 import DatasetManager from './pages/DatasetManager'
+import DatabaseViewer from './components/DatabaseViewer'
 import { NERProvider } from './contexts/NERContext'
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/annotate" element={<Annotator />} />
               <Route path="/datasets" element={<DatasetManager />} />
+              <Route path="/database" element={<DatabaseViewer />} />
             </Routes>
           </main>
         </div>
