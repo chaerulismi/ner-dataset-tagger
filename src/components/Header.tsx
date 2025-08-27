@@ -52,6 +52,18 @@ const Header: React.FC = () => {
               <Database className="h-4 w-4" />
               <span>Datasets</span>
             </Link>
+            
+            <Link
+              to="/database"
+              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                isActive('/database')
+                  ? 'bg-primary-100 text-primary-700'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              <Database className="h-4 w-4" />
+              <span>Database</span>
+            </Link>
           </nav>
         </div>
       </div>

@@ -1,15 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useNER } from '../contexts/NERContext'
-import { Plus, Save, Trash2, Download } from 'lucide-react'
+import { Plus, Save, Trash2, Download, X } from 'lucide-react'
 import TextAnnotator from '../components/TextAnnotator'
 import DatasetSelector from '../components/DatasetSelector'
 
 const Annotator: React.FC = () => {
-  const { state, addSample, updateSample, exportDataset, createDataset } = useNER()
+  const { state, addSample, updateSample, exportDataset, createDataset, testDatabaseConnection } = useNER()
   const [selectedText, setSelectedText] = useState('')
   const [selectedEntityType, setSelectedEntityType] = useState('')
   const [isAddingSample, setIsAddingSample] = useState(false)
   const [newSampleText, setNewSampleText] = useState('')
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newDatasetName, setNewDatasetName] = useState('')
+  const [newDatasetDescription, setNewDatasetDescription] = useState('')
+  const [isCreatingDataset, setIsCreatingDataset] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const [dbTestResult, setDbTestResult] = useState<string>('')
 
   const handleAddSample = () => {
     console.log('handleAddSample called')
@@ -41,13 +47,56 @@ const Annotator: React.FC = () => {
     }
   }
 
-  const handleCreateDataset = () => {
-    const name = prompt('Enter dataset name:')
-    const description = prompt('Enter dataset description:')
-    if (name && description) {
-      createDataset(name, description)
+  const handleCreateDataset = async () => {
+    if (!newDatasetName.trim() || !newDatasetDescription.trim()) {
+      setCreateError('Please fill in both name and description')
+      return
+    }
+
+    setIsCreatingDataset(true)
+    setCreateError('')
+
+    try {
+      console.log('Creating dataset:', { name: newDatasetName, description: newDatasetDescription })
+      await createDataset(newDatasetName.trim(), newDatasetDescription.trim())
+      
+      // Reset form and close modal
+      setNewDatasetName('')
+      setNewDatasetDescription('')
+      setShowCreateModal(false)
+      
+      console.log('Dataset created successfully')
+    } catch (error) {
+      console.error('Error creating dataset:', error)
+      setCreateError('Failed to create dataset. Please try again.')
+    } finally {
+      setIsCreatingDataset(false)
     }
   }
+
+  const openCreateModal = () => {
+    console.log('openCreateModal called')
+    setShowCreateModal(true)
+    setNewDatasetName('')
+    setNewDatasetDescription('')
+    setCreateError('')
+    console.log('Modal state set to true, showCreateModal:', true)
+  }
+
+  const testConnection = async () => {
+    try {
+      setDbTestResult('Testing...')
+      const isConnected = await testDatabaseConnection()
+      setDbTestResult(isConnected ? 'Database connected successfully!' : 'Database connection failed')
+    } catch (error) {
+      setDbTestResult(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Modal state changed:', showCreateModal)
+  }, [showCreateModal])
 
   if (!state.currentDataset) {
     return (
@@ -57,18 +106,118 @@ const Annotator: React.FC = () => {
           <p className="text-gray-600">Select or create a dataset to start annotating text samples.</p>
         </div>
         
+        {/* Error Display */}
+        {state.error && (
+          <div className="card bg-red-50 border-red-200">
+            <div className="text-red-800">
+              <h3 className="font-semibold mb-2">Error</h3>
+              <p>{state.error}</p>
+            </div>
+          </div>
+        )}
+        
         <DatasetSelector />
         
         <div className="card text-center">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Create New Dataset</h2>
           <button
-            onClick={handleCreateDataset}
+            onClick={openCreateModal}
             className="btn-primary"
           >
             <Plus className="h-4 w-4 mr-2" />
             Create Dataset
           </button>
         </div>
+
+        {/* Database Test Section */}
+        <div className="card text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Database Connection Test</h3>
+          <button
+            onClick={testConnection}
+            className="btn-secondary mb-3"
+          >
+            Test Database Connection
+          </button>
+          {dbTestResult && (
+            <div className={`text-sm ${dbTestResult.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
+              {dbTestResult}
+            </div>
+          )}
+        </div>
+
+        {/* Debug info */}
+        <div className="text-xs text-gray-500 text-center">
+          Debug: Modal state = {showCreateModal.toString()}
+        </div>
+
+        {/* Create Dataset Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Create New Dataset</h3>
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="dataset-name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Dataset Name
+                  </label>
+                  <input
+                    id="dataset-name"
+                    type="text"
+                    value={newDatasetName}
+                    onChange={(e) => setNewDatasetName(e.target.value)}
+                    placeholder="Enter dataset name"
+                    className="input-field w-full"
+                    disabled={isCreatingDataset}
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="dataset-description" className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    id="dataset-description"
+                    value={newDatasetDescription}
+                    onChange={(e) => setNewDatasetDescription(e.target.value)}
+                    placeholder="Enter dataset description"
+                    className="input-field w-full h-24 resize-none"
+                    disabled={isCreatingDataset}
+                  />
+                </div>
+                
+                {createError && (
+                  <div className="text-red-600 text-sm">{createError}</div>
+                )}
+                
+                <div className="flex space-x-3 pt-2">
+                  <button
+                    onClick={() => setShowCreateModal(false)}
+                    className="btn-secondary flex-1"
+                    disabled={isCreatingDataset}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateDataset}
+                    className="btn-primary flex-1"
+                    disabled={isCreatingDataset || !newDatasetName.trim() || !newDatasetDescription.trim()}
+                  >
+                    {isCreatingDataset ? 'Creating...' : 'Create Dataset'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -181,10 +330,15 @@ const Annotator: React.FC = () => {
                   entities={sample.entities}
                   entityTypes={state.entityTypes}
                   onEntitiesChange={(entities) => {
-                    console.log('onEntitiesChange called with entities:', entities)
+                    console.log('=== onEntitiesChange called ===')
+                    console.log('Sample ID:', sample.id)
+                    console.log('Current entities:', sample.entities)
+                    console.log('New entities:', entities)
                     const updatedSample = { ...sample, entities }
-                    console.log('Calling updateSample with:', updatedSample)
+                    console.log('Updated sample:', updatedSample)
+                    console.log('Calling updateSample...')
                     updateSample(updatedSample)
+                    console.log('updateSample called')
                   }}
                 />
               </div>
