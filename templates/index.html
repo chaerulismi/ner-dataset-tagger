@@ -81,6 +81,8 @@
             background-color: white;
             border-radius: 4px;
         }
+        
+
     </style>
 </head>
 <body>
@@ -98,9 +100,6 @@
 
     <div class="container">
         <h2>Text Annotation</h2>
-        <div class="alert" style="background-color: #e3f2fd; border: 1px solid #2196f3; border-radius: 4px; padding: 10px; margin-bottom: 15px;">
-            <strong>💡 Entity Priority System:</strong> When the same token can have multiple entity types (e.g., "Washington" as both PERSON and LOCATION), use the priority field to control which entity type takes precedence. Higher priority entities will override lower priority ones.
-        </div>
         <div class="input-group">
             <label for="inputText">Input Text:</label>
             <textarea id="inputText" placeholder="Enter text to annotate..."></textarea>
@@ -119,11 +118,7 @@
             <input type="text" id="customEntityType" placeholder="Custom entity type" style="display: none; margin-top: 5px;">
         </div>
         
-        <div class="input-group">
-            <label for="entityPriority">Entity Priority (Higher = Overwrites others):</label>
-            <input type="number" id="entityPriority" value="1" min="1" max="10" style="width: 100px;">
-            <small style="color: #666;">Higher priority entities will override lower priority ones in case of conflicts</small>
-        </div>
+
         
         <div class="input-group">
             <label for="entityText">Entity Text:</label>
@@ -167,11 +162,18 @@
             }
         });
 
+
+
+
+        
+
+        
+
+        
         function addEntity() {
             const entityText = document.getElementById('entityText').value.trim();
             const entityType = document.getElementById('entityType').value;
             const customType = document.getElementById('customEntityType').value.trim();
-            const priority = parseInt(document.getElementById('entityPriority').value) || 1;
             
             if (!entityText) {
                 alert('Please enter entity text');
@@ -186,8 +188,7 @@
 
             const entity = {
                 text: entityText,
-                type: type,
-                priority: priority
+                type: type
             };
 
             currentEntities.push(entity);
@@ -208,7 +209,7 @@
                 const entityDiv = document.createElement('div');
                 entityDiv.className = 'entity';
                 entityDiv.innerHTML = `
-                    <strong>${entity.type}:</strong> ${entity.text} <small>(Priority: ${entity.priority})</small>
+                    <strong>${entity.type}:</strong> ${entity.text}
                     <span class="remove" onclick="removeEntity(${index})">×</span>
                 `;
                 container.appendChild(entityDiv);
@@ -262,6 +263,7 @@
             document.getElementById('inputText').value = '';
             document.getElementById('entityText').value = '';
             currentEntities = [];
+
             updateEntitiesList();
         }
 
@@ -322,6 +324,8 @@
             }
         }
 
+
+        
         // Load annotations on page load
         window.onload = function() {
             loadAnnotations();
