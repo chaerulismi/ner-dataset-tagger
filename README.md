@@ -41,11 +41,32 @@ For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 
 ## Usage
 
-1. **Start the application**:
+### Development Mode (with Hot Reloading)
+
+For development with automatic code reloading:
+
 ```bash
+# Option 1: Use the development script (recommended)
+python dev.py
+
+# Option 2: Use the shell script
+./start-dev.sh
+
+# Option 3: Set environment variable and run normally
+export FLASK_ENV=development
 python app.py
 ```
 
+### Production Mode
+
+```bash
+export FLASK_ENV=production
+python app.py
+```
+
+### Standard Usage
+
+1. **Start the application** using one of the methods above
 2. **Open your browser** and navigate to `http://localhost:5000`
 
 3. **Create a dataset**:
@@ -82,6 +103,30 @@ Where:
 - `B-` indicates the beginning of an entity
 - `I-` indicates the continuation of an entity
 - `O` indicates tokens that are not part of any entity
+
+## Development
+
+### Hot Reloading
+
+The development server automatically reloads when you make changes to:
+- Python files (`.py`)
+- HTML templates (`.html`)
+- Static files (CSS, JavaScript)
+
+**No need to restart the server!** Just save your files and the changes will be reflected immediately.
+
+### Development Scripts
+
+- `dev.py` - Development server with hot reloading enabled
+- `start-dev.sh` - Shell script to start development server (includes dependency installation)
+
+### Environment Variables
+
+- `FLASK_ENV=development` - Enables debug mode and hot reloading
+- `FLASK_ENV=production` - Disables debug mode for production use
+- `PORT` - Set custom port (default: 5000)
+
+
 
 ## API Endpoints
 

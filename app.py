@@ -1,10 +1,12 @@
 from flask import Flask, render_template, request, jsonify, send_file
+from flask_cors import CORS
 import json
 import os
 import tempfile
 from datetime import datetime
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for development
 
 # Store datasets in memory (in production, use a database)
 datasets = {}
@@ -61,6 +63,8 @@ def save_annotation():
     
     return jsonify({'success': True, 'message': 'Annotation saved successfully'})
 
+
+
 @app.route('/api/get_datasets')
 def get_datasets():
     return jsonify(list(datasets.keys()))
@@ -107,16 +111,12 @@ def export_hf_format(dataset_name):
         print(f"Text: '{text}'")
         print(f"Tokens: {tokens}")
         
-        # Apply entity labels with conflict resolution
+        # Apply entity labels
         entity_conflicts = []
         
-        # Sort entities by priority (highest first) to handle conflicts properly
-        sorted_entities = sorted(entities, key=lambda x: x.get('priority', 1), reverse=True)
-        
-        for entity in sorted_entities:
+        for entity in entities:
             entity_text = entity['text']
             entity_type = entity['type']
-            entity_priority = entity.get('priority', 1)
             
             # Tokenize the entity text the same way
             entity_tokens = []
@@ -155,7 +155,7 @@ def export_hf_format(dataset_name):
                                 'text': entity_text
                             })
                     
-                    # Apply labels (overwriting if there's a conflict)
+                    # Apply labels
                     for j in range(len(entity_tokens)):
                         if j == 0:
                             labels[i+j] = f'B-{entity_type}'
@@ -163,9 +163,9 @@ def export_hf_format(dataset_name):
                             labels[i+j] = f'I-{entity_type}'
                     
                     if conflict_detected:
-                        print(f"⚠️  CONFLICT: '{entity_text}' ({entity_type}, Priority: {entity_priority}) overwrites existing label at position {i}")
+                        print(f"⚠️  CONFLICT: '{entity_text}' ({entity_type}) overwrites existing label at position {i}")
                     else:
-                        print(f"Found entity '{entity_text}' ({entity_type}, Priority: {entity_priority}) at position {i}, tokens: {entity_tokens}, labels: {labels[i:i+len(entity_tokens)]}")
+                        print(f"Found entity '{entity_text}' ({entity_type}) at position {i}, tokens: {entity_tokens}, labels: {labels[i:i+len(entity_tokens)]}")
                     break
         
         # Report conflicts if any
@@ -173,7 +173,7 @@ def export_hf_format(dataset_name):
             print(f"\n🚨 Entity Conflicts Detected ({len(entity_conflicts)}):")
             for conflict in entity_conflicts:
                 print(f"  - Token '{conflict['token']}' at position {conflict['position']}: {conflict['old_entity']} → {conflict['new_entity']} (from '{conflict['text']}')")
-            print("  Note: Later entities override earlier ones. Consider entity priorities for better control.\n")
+            print("  Note: Conflicts occur when the same token position is tagged by multiple entities.\n")
         
         hf_format.append({
             'tokens': tokens,
@@ -215,11 +215,17 @@ if __name__ == '__main__':
     # Get port from environment variable or default to 5000
     port = int(os.environ.get('PORT', 5000))
     
-    # Only run in debug mode if explicitly set
-    debug = os.environ.get('FLASK_ENV') == 'development'
+    # Enable debug mode by default for development (hot reloading)
+    # Set FLASK_ENV=production to disable debug mode
+    debug = os.environ.get('FLASK_ENV') != 'production'
+    
+    print(f"🚀 Starting Flask app in {'debug' if debug else 'production'} mode")
+    print(f"📱 Hot reloading is {'enabled' if debug else 'disabled'}")
+    print(f"🌐 Server will be available at: http://localhost:{port}")
     
     app.run(
         debug=debug,
         host='0.0.0.0',  # Allow external connections
-        port=port
+        port=port,
+        use_reloader=debug  # Enable auto-reloader in debug mode
     )
