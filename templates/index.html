@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NER Dataset Creator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .entity {
+            background-color: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            padding: 5px 10px;
+            margin: 5px;
+            display: inline-block;
+        }
+        .entity .remove {
+            color: red;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .highlighted {
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+        }
+        .dataset-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .annotation-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: white;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>NER Dataset Creator</h1>
+    
+    <div class="container">
+        <h2>Dataset Management</h2>
+        <div class="input-group">
+            <label for="datasetName">Dataset Name:</label>
+            <input type="text" id="datasetName" placeholder="Enter dataset name" value="my_ner_dataset">
+        </div>
+        <button onclick="loadDataset()">Load Dataset</button>
+        <button onclick="exportDataset()">Export HF Format</button>
+    </div>
+
+    <div class="container">
+        <h2>Text Annotation</h2>
+        <div class="alert" style="background-color: #e3f2fd; border: 1px solid #2196f3; border-radius: 4px; padding: 10px; margin-bottom: 15px;">
+            <strong>💡 Entity Priority System:</strong> When the same token can have multiple entity types (e.g., "Washington" as both PERSON and LOCATION), use the priority field to control which entity type takes precedence. Higher priority entities will override lower priority ones.
+        </div>
+        <div class="input-group">
+            <label for="inputText">Input Text:</label>
+            <textarea id="inputText" placeholder="Enter text to annotate..."></textarea>
+        </div>
+        
+        <div class="input-group">
+            <label for="entityType">Entity Type:</label>
+            <select id="entityType">
+                <option value="PERSON">PERSON</option>
+                <option value="ORGANIZATION">ORGANIZATION</option>
+                <option value="LOCATION">LOCATION</option>
+                <option value="DATE">DATE</option>
+                <option value="MONEY">MONEY</option>
+                <option value="CUSTOM">CUSTOM</option>
+            </select>
+            <input type="text" id="customEntityType" placeholder="Custom entity type" style="display: none; margin-top: 5px;">
+        </div>
+        
+        <div class="input-group">
+            <label for="entityPriority">Entity Priority (Higher = Overwrites others):</label>
+            <input type="number" id="entityPriority" value="1" min="1" max="10" style="width: 100px;">
+            <small style="color: #666;">Higher priority entities will override lower priority ones in case of conflicts</small>
+        </div>
+        
+        <div class="input-group">
+            <label for="entityText">Entity Text:</label>
+            <input type="text" id="entityText" placeholder="Select text and click 'Add Entity'">
+        </div>
+        
+        <button onclick="addEntity()">Add Entity</button>
+        <button onclick="saveAnnotation()">Save Annotation</button>
+        <button onclick="clearForm()">Clear Form</button>
+    </div>
+
+    <div class="container">
+        <h2>Current Entities</h2>
+        <div id="entitiesList"></div>
+    </div>
+
+    <div class="container">
+        <h2>Dataset Annotations</h2>
+        <div id="annotationsList"></div>
+    </div>
+
+    <script>
+        let currentEntities = [];
+        let currentDataset = 'my_ner_dataset';
+
+        // Handle custom entity type input
+        document.getElementById('entityType').addEventListener('change', function() {
+            const customInput = document.getElementById('customEntityType');
+            if (this.value === 'CUSTOM') {
+                customInput.style.display = 'block';
+            } else {
+                customInput.style.display = 'none';
+            }
+        });
+
+        // Text selection handling
+        document.getElementById('inputText').addEventListener('mouseup', function() {
+            const selection = window.getSelection();
+            if (selection.toString().length > 0) {
+                document.getElementById('entityText').value = selection.toString();
+            }
+        });
+
+        function addEntity() {
+            const entityText = document.getElementById('entityText').value.trim();
+            const entityType = document.getElementById('entityType').value;
+            const customType = document.getElementById('customEntityType').value.trim();
+            const priority = parseInt(document.getElementById('entityPriority').value) || 1;
+            
+            if (!entityText) {
+                alert('Please enter entity text');
+                return;
+            }
+
+            const type = entityType === 'CUSTOM' ? customType : entityType;
+            if (entityType === 'CUSTOM' && !customType) {
+                alert('Please enter custom entity type');
+                return;
+            }
+
+            const entity = {
+                text: entityText,
+                type: type,
+                priority: priority
+            };
+
+            currentEntities.push(entity);
+            updateEntitiesList();
+            document.getElementById('entityText').value = '';
+        }
+
+        function removeEntity(index) {
+            currentEntities.splice(index, 1);
+            updateEntitiesList();
+        }
+
+        function updateEntitiesList() {
+            const container = document.getElementById('entitiesList');
+            container.innerHTML = '';
+            
+            currentEntities.forEach((entity, index) => {
+                const entityDiv = document.createElement('div');
+                entityDiv.className = 'entity';
+                entityDiv.innerHTML = `
+                    <strong>${entity.type}:</strong> ${entity.text} <small>(Priority: ${entity.priority})</small>
+                    <span class="remove" onclick="removeEntity(${index})">×</span>
+                `;
+                container.appendChild(entityDiv);
+            });
+        }
+
+        function saveAnnotation() {
+            const text = document.getElementById('inputText').value.trim();
+            const datasetName = document.getElementById('datasetName').value.trim();
+            
+            if (!text) {
+                alert('Please enter text to annotate');
+                return;
+            }
+
+            if (currentEntities.length === 0) {
+                alert('Please add at least one entity');
+                return;
+            }
+
+            const data = {
+                text: text,
+                entities: currentEntities,
+                dataset_name: datasetName
+            };
+
+            fetch('/api/save_annotation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Annotation saved successfully!');
+                    clearForm();
+                    loadAnnotations();
+                } else {
+                    alert('Error saving annotation');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving annotation');
+            });
+        }
+
+        function clearForm() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('entityText').value = '';
+            currentEntities = [];
+            updateEntitiesList();
+        }
+
+        function loadDataset() {
+            const datasetName = document.getElementById('datasetName').value.trim();
+            if (datasetName) {
+                currentDataset = datasetName;
+                loadAnnotations();
+            }
+        }
+
+        function loadAnnotations() {
+            fetch(`/api/get_annotations/${currentDataset}`)
+                .then(response => response.json())
+                .then(annotations => {
+                    displayAnnotations(annotations);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        function displayAnnotations(annotations) {
+            const container = document.getElementById('annotationsList');
+            container.innerHTML = '';
+            
+            if (annotations.length === 0) {
+                container.innerHTML = '<p>No annotations found for this dataset.</p>';
+                return;
+            }
+
+            annotations.forEach((annotation, index) => {
+                const annotationDiv = document.createElement('div');
+                annotationDiv.className = 'annotation-item';
+                
+                let entitiesHtml = '';
+                annotation.entities.forEach(entity => {
+                    entitiesHtml += `<span class="entity"><strong>${entity.type}:</strong> ${entity.text}</span>`;
+                });
+
+                annotationDiv.innerHTML = `
+                    <h4>Annotation ${index + 1}</h4>
+                    <p><strong>Text:</strong> ${annotation.text}</p>
+                    <p><strong>Entities:</strong></p>
+                    <div>${entitiesHtml}</div>
+                `;
+                
+                container.appendChild(annotationDiv);
+            });
+        }
+
+        function exportDataset() {
+            const datasetName = document.getElementById('datasetName').value.trim();
+            if (datasetName) {
+                window.location.href = `/api/export_hf_format/${datasetName}`;
+            } else {
+                alert('Please enter a dataset name');
+            }
+        }
+
+        // Load annotations on page load
+        window.onload = function() {
+            loadAnnotations();
+        };
+    </script>
+</body>
+</html>

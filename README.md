@@ -1,189 +1,116 @@
-# NER Dataset Tagger
+# NER Dataset Creator
 
-A modern web application for creating and annotating Named Entity Recognition (NER) training datasets that are compatible with HuggingFace models.
+A simple web application for creating Named Entity Recognition (NER) datasets in HuggingFace format for model finetuning.
 
 ## Features
 
-- **Interactive Text Annotation**: Click and drag to select text spans and assign entity types
-- **Dataset Management**: Create, organize, and manage multiple NER datasets
-- **Entity Type Customization**: Define custom entity types for your specific domain
-- **HuggingFace Compatibility**: Export datasets in the exact format needed for training
-- **Modern UI**: Beautiful, responsive interface built with React and Tailwind CSS
-- **Real-time Validation**: Prevent overlapping entities and ensure data quality
-- **Multiple Export Formats**: Support for HuggingFace JSON and CoNLL formats
+- **Simple Web Interface**: Easy-to-use web UI for text annotation
+- **Entity Annotation**: Support for common entity types (PERSON, ORGANIZATION, LOCATION, DATE, MONEY) and custom types
+- **Dataset Management**: Create and manage multiple datasets
+- **HuggingFace Export**: Export datasets in the standard HuggingFace format with BIO tagging
+- **Real-time Preview**: See your annotations as you create them
 
-## Screenshots
+## Installation
 
-The application provides an intuitive interface for:
-- Creating and managing datasets
-- Adding text samples for annotation
-- Interactive text selection and entity labeling
-- Viewing annotation progress and statistics
-- Exporting datasets for model training
+### Option 1: Local Installation
 
-## Technology Stack
-
-- **Frontend**: React 18 + TypeScript
-- **Styling**: Tailwind CSS
-- **Build Tool**: Vite
-- **Icons**: Lucide React
-- **State Management**: React Context + useReducer
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 16+ 
-- npm or yarn
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd ner-dataset-tagger
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Start the development server:
-```bash
-npm run dev
-```
-
-4. Open your browser and navigate to `http://localhost:3000`
-
-### Building for Production
+1. Clone or download this repository
+2. Install the required dependencies:
 
 ```bash
-npm run build
-npm run preview
+pip install -r requirements.txt
 ```
+
+### Option 2: Docker Installation (Recommended)
+
+1. **Quick start with Docker Compose:**
+```bash
+# Build and run
+docker-compose up --build
+
+# Access at http://localhost:5000
+```
+
+2. **Production deployment:**
+```bash
+# Build and run production version
+docker-compose -f docker-compose.prod.yml up --build
+```
+
+For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 
 ## Usage
 
-### 1. Create a Dataset
+1. **Start the application**:
+```bash
+python app.py
+```
 
-1. Navigate to the "Datasets" page
-2. Click "Create Dataset"
-3. Enter a name and description for your dataset
-4. Click "Create Dataset"
+2. **Open your browser** and navigate to `http://localhost:5000`
 
-### 2. Add Text Samples
+3. **Create a dataset**:
+   - Enter a dataset name
+   - Input text to annotate
+   - Select entity types and mark entities
+   - Save annotations
 
-1. Go to the "Annotate" page
-2. Select your dataset from the dropdown
-3. Click "Add Sample" and enter your text
-4. Click "Add Sample" to save
+4. **Export your dataset**:
+   - Click "Export HF Format" to download the dataset in HuggingFace format
 
-### 3. Annotate Entities
+## How to Annotate
 
-1. Select an entity type from the dropdown (e.g., PERSON, ORGANIZATION)
-2. Click and drag to select text in the text area
-3. Click "Add Entity" to create the annotation
-4. Repeat for all entities in the text
+1. **Enter Text**: Paste or type the text you want to annotate
+2. **Select Entity Type**: Choose from predefined types or create custom ones
+3. **Mark Entities**: Select text in the input area or type entity text manually
+4. **Add Entity**: Click "Add Entity" to add the annotation
+5. **Save**: Click "Save Annotation" to store the annotation in your dataset
 
-### 4. Export Dataset
+## Output Format
 
-1. Navigate to the "Datasets" page
-2. Click the download icon on your dataset
-3. The dataset will be exported in HuggingFace-compatible format
-
-## Data Format
-
-### HuggingFace Format
-
-The exported dataset follows the standard HuggingFace NER format:
+The exported dataset follows the HuggingFace standard format:
 
 ```json
 [
   {
-    "text": "John Smith works at Microsoft in Seattle.",
-    "entities": [
-      {
-        "start": 0,
-        "end": 10,
-        "label": "PERSON"
-      },
-      {
-        "start": 20,
-        "end": 28,
-        "label": "ORGANIZATION"
-      },
-      {
-        "start": 32,
-        "end": 38,
-        "label": "LOCATION"
-      }
-    ]
+    "tokens": ["John", "lives", "in", "New", "York"],
+    "ner_tags": ["B-PERSON", "O", "O", "B-LOCATION", "I-LOCATION"]
   }
 ]
 ```
 
-### CoNLL Format
+Where:
+- `B-` indicates the beginning of an entity
+- `I-` indicates the continuation of an entity
+- `O` indicates tokens that are not part of any entity
 
-For CoNLL-2003 compatibility:
+## API Endpoints
 
-```
-John B-PERSON
-Smith I-PERSON
-works O
-at O
-Microsoft B-ORGANIZATION
-in O
-Seattle B-LOCATION
-. O
-```
+- `GET /` - Main interface
+- `POST /api/save_annotation` - Save a new annotation
+- `GET /api/get_datasets` - List all datasets
+- `GET /api/get_annotations/<dataset_name>` - Get annotations for a dataset
+- `GET /api/export_hf_format/<dataset_name>` - Export dataset in HuggingFace format
 
-## Project Structure
+## Example Usage
 
-```
-src/
-├── components/          # Reusable UI components
-│   ├── Header.tsx      # Navigation header
-│   ├── TextAnnotator.tsx # Core annotation component
-│   └── DatasetSelector.tsx # Dataset selection
-├── contexts/           # React context providers
-│   └── NERContext.tsx # Main state management
-├── pages/             # Page components
-│   ├── Home.tsx       # Landing page
-│   ├── Annotator.tsx  # Annotation interface
-│   └── DatasetManager.tsx # Dataset management
-├── utils/             # Utility functions
-│   └── helpers.ts     # Helper functions
-├── App.tsx            # Main app component
-├── main.tsx           # Entry point
-└── index.css          # Global styles
-```
+1. Start the app and navigate to the web interface
+2. Create a dataset named "sample_ner"
+3. Input text: "John Smith works at Microsoft in Seattle"
+4. Add entities:
+   - "John Smith" as PERSON
+   - "Microsoft" as ORGANIZATION
+   - "Seattle" as LOCATION
+5. Save the annotation
+6. Export the dataset to get a JSON file ready for HuggingFace model training
 
-## Contributing
+## Requirements
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Commit your changes: `git commit -am 'Add feature'`
-4. Push to the branch: `git push origin feature-name`
-5. Submit a pull request
+- Python 3.7+
+- Flask 2.3.3
+- Modern web browser
 
-## License
+## Notes
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Built with modern web technologies for optimal performance and user experience
-- Designed specifically for machine learning practitioners and researchers
-- Inspired by the need for high-quality NER training data
-
-## Support
-
-If you encounter any issues or have questions, please:
-1. Check the existing issues on GitHub
-2. Create a new issue with detailed information
-3. Include steps to reproduce the problem
-
----
-
-**Happy Annotating! 🏷️**
+- This is a development version that stores data in memory
+- For production use, consider adding a database backend
+- The current tokenization is simple (space-based) - for more complex languages, you may need to implement custom tokenization
